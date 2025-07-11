@@ -32,6 +32,30 @@ func TestAdd(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("subtest 1", func(t *testing.T) {
+		// Print if COPYIST_RECORD is set
+		if os.Getenv("COPYIST_RECORD") != "" {
+			t.Logf("COPYIST_RECORD is set to: %s", os.Getenv("COPYIST_RECORD"))
+		} else {
+			t.Log("COPYIST_RECORD is not set")
+		}
+		if Add(1, 1) != 2 {
+			t.Error("1+1 should be 2")
+		}
+	})
+
+	t.Run("subtest 2", func(t *testing.T) {
+		// Print if COPYIST_RECORD is set
+		if os.Getenv("COPYIST_RECORD") != "" {
+			t.Logf("COPYIST_RECORD is set to: %s", os.Getenv("COPYIST_RECORD"))
+		} else {
+			t.Log("COPYIST_RECORD is not set")
+		}
+		if Add(1, 1) != 2 {
+			t.Error("1+1 should be 2")
+		}
+	})
 }
 
 // BenchmarkAdd benchmarks the Add function

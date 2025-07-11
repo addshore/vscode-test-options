@@ -30,7 +30,7 @@ Here’s how you can set up profiles for running standard Go tests, tests with c
         {
             "name": "Go: record test",
             "commandExecutable": "go",
-            "commandArgsTemplate": [ "test", "-v", "-run", "^{{testName}}$" ],
+            "commandArgsTemplate": [ "test", "-v", "-run", "\"^{{testName}}$\"" ],
             "testFilePattern": "**/*_test.go",
             "testFunctionRegex": "^func (Test\\w+)\\s*\\(|^[ \\t]*t\\.Run\\(\\\"([^\\\"]+)\\\"",
             "args": [ "-record" ]
@@ -38,7 +38,7 @@ Here’s how you can set up profiles for running standard Go tests, tests with c
         {
             "name": "Go: record test (env)",
             "commandExecutable": "go",
-            "commandArgsTemplate": [ "test", "-v", "-run", "^{{testName}}$" ],
+            "commandArgsTemplate": [ "test", "-v", "-run", "\"^{{testName}}$\"" ],
             "testFilePattern": "**/*_test.go",
             "testFunctionRegex": "^func (Test\\w+)\\s*\\(|^[ \\t]*t\\.Run\\(\\\"([^\\\"]+)\\\"",
             "args": [],
