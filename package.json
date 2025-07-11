@@ -9,7 +9,10 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:go",
+    "workspaceContains:**/*_test.go"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [

@@ -19,7 +19,7 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(disposable);
 
-	// Register a new test run profile: "record Test"
+	// Register test controller and auto-discover Go tests
 	if (vscode.tests) {
 		console.log('[test-options] Registering test controller...');
 		const controller = vscode.tests.createTestController('test-options-controller', 'Test Options Controller');
@@ -32,30 +32,134 @@ export function activate(context: vscode.ExtensionContext) {
 			vscode.TestRunProfileKind.Run,
 			async (request, token) => {
 				console.log('[test-options] record Test run profile triggered.');
-				const goProjectPath = path.join(context.extensionPath, '..', '..', 'go-project');
-				const outputChannel = vscode.window.createOutputChannel('record Test');
-				outputChannel.show(true);
-				outputChannel.appendLine('[test-options] Running: go test -v -record');
-				outputChannel.appendLine(`[test-options] Working directory: ${goProjectPath}`);
-				try {
-					const proc = cp.spawn('go', ['test', '-v', '-record'], { cwd: goProjectPath });
-					outputChannel.appendLine('[test-options] Spawned go test process.');
-					proc.stdout.on('data', (data) => outputChannel.append(data.toString()));
-					proc.stderr.on('data', (data) => outputChannel.append(data.toString()));
-					proc.on('close', (code) => {
-						outputChannel.appendLine(`\n[test-options] Process exited with code ${code}`);
-					});
-					proc.on('error', (err) => {
-						outputChannel.appendLine('[test-options] Failed to start process: ' + err);
-					});
-				} catch (err) {
-					outputChannel.appendLine('[test-options] Error running go test: ' + err);
+				const run = controller.createTestRun(request);
+				
+				for (const test of request.include || []) {
+					run.started(test);
+					const testUri = test.uri;
+					const testName = test.id.split('/').pop(); // Get test function name
+					
+					if (testUri) {
+						const goProjectPath = path.dirname(testUri.fsPath);
+						const outputChannel = vscode.window.createOutputChannel('record Test');
+						outputChannel.show(true);
+						outputChannel.appendLine(`[test-options] Running: go test -v -run ^${testName}$ -record`);
+						outputChannel.appendLine(`[test-options] Working directory: ${goProjectPath}`);
+						
+						try {
+							const proc = cp.spawn('go', ['test', '-v', '-run', `^${testName}$`, '-record'], { cwd: goProjectPath });
+							outputChannel.appendLine('[test-options] Spawned go test process.');
+							
+							let output = '';
+							proc.stdout.on('data', (data) => {
+								const text = data.toString();
+								output += text;
+								outputChannel.append(text);
+							});
+							proc.stderr.on('data', (data) => {
+								const text = data.toString();
+								output += text;
+								outputChannel.append(text);
+							});
+							
+							proc.on('close', (code) => {
+								outputChannel.appendLine(`\n[test-options] Process exited with code ${code}`);
+								if (code === 0) {
+									run.passed(test);
+								} else {
+									run.failed(test, new vscode.TestMessage(output));
+								}
+								run.end();
+							});
+							
+							proc.on('error', (err) => {
+								const errorMessage = err instanceof Error ? err.message : String(err);
+								outputChannel.appendLine('[test-options] Failed to start process: ' + errorMessage);
+								run.failed(test, new vscode.TestMessage(errorMessage));
+								run.end();
+							});
+						} catch (err) {
+							const errorMessage = err instanceof Error ? err.message : String(err);
+							outputChannel.appendLine('[test-options] Error running go test: ' + errorMessage);
+							run.failed(test, new vscode.TestMessage(errorMessage));
+							run.end();
+						}
+					}
 				}
 			},
 			false // not default
 		);
 		context.subscriptions.push(recordProfile);
 		console.log('[test-options] record Test run profile registered.');
+
+		// Function to discover and register tests from a Go test file
+		const discoverTestsInFile = async (uri: vscode.Uri) => {
+			try {
+				const document = await vscode.workspace.openTextDocument(uri);
+				const text = document.getText();
+				const regex = /^func (Test\w+)\s*\(/gm;
+				let match;
+				
+				// Create a file-level test item
+				const fileItem = controller.createTestItem(uri.toString(), path.basename(uri.fsPath), uri);
+				controller.items.add(fileItem);
+				
+				while ((match = regex.exec(text))) {
+					const testName = match[1];
+					const line = document.positionAt(match.index).line;
+					const range = new vscode.Range(line, 0, line, match[0].length);
+					
+					// Create test item for each test function
+					const testItem = controller.createTestItem(
+						`${uri.toString()}/${testName}`,
+						testName,
+						uri
+					);
+					testItem.range = range;
+					fileItem.children.add(testItem);
+				}
+				
+				console.log(`[test-options] Discovered tests in ${uri.fsPath}`);
+			} catch (error) {
+				console.error(`[test-options] Error discovering tests in ${uri.fsPath}:`, error);
+			}
+		};
+
+		// Watch for Go test files being opened
+		const onDidOpenTextDocument = vscode.workspace.onDidOpenTextDocument((document) => {
+			if (document.fileName.endsWith('_test.go')) {
+				console.log(`[test-options] Go test file opened: ${document.fileName}`);
+				discoverTestsInFile(document.uri);
+			}
+		});
+		context.subscriptions.push(onDidOpenTextDocument);
+
+		// Scan already open documents for Go test files
+		vscode.workspace.textDocuments.forEach((document) => {
+			if (document.fileName.endsWith('_test.go')) {
+				console.log(`[test-options] Found already open Go test file: ${document.fileName}`);
+				discoverTestsInFile(document.uri);
+			}
+		});
+
+		// Also watch for file system changes to discover new test files
+		const watcher = vscode.workspace.createFileSystemWatcher('**/*_test.go');
+		watcher.onDidCreate((uri) => {
+			console.log(`[test-options] New Go test file created: ${uri.fsPath}`);
+			discoverTestsInFile(uri);
+		});
+		watcher.onDidChange((uri) => {
+			console.log(`[test-options] Go test file changed: ${uri.fsPath}`);
+			// Remove existing items for this file and re-discover
+			controller.items.delete(uri.toString());
+			discoverTestsInFile(uri);
+		});
+		watcher.onDidDelete((uri) => {
+			console.log(`[test-options] Go test file deleted: ${uri.fsPath}`);
+			controller.items.delete(uri.toString());
+		});
+		context.subscriptions.push(watcher);
+
 	} else {
 		console.log('[test-options] vscode.tests API not available.');
 	}
