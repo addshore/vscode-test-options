@@ -18,6 +18,15 @@
             "args": [ "-cover" ]
         },
         {
+            "name": "Go: record test (env)",
+            "commandExecutable": "go",
+            "commandArgsTemplate": [ "test", "-v", "-run", "^{{testName}}$" ],
+            "testFilePattern": "**/*_test.go",
+            "testFunctionRegex": "^func (Test\\w+)\\s*\\(",
+            "args": [],
+            "env": { "COPYIST_RECORD": "1" }
+        },
+        {
             "name": "Jest: run test",
             "commandExecutable": "npx",
             "commandArgsTemplate": [

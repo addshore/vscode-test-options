@@ -15,6 +15,7 @@ interface ITestProfile {
 	testFilePattern: string;
 	testFunctionRegex: string;
 	args: string[];
+	env?: { [key: string]: string };
 }
 
 export function activate(context: vscode.ExtensionContext) {
@@ -76,8 +77,10 @@ let disposableProfiles: vscode.Disposable[] = [];
 								outputChannel.appendLine(`[test-options] Running: ${executable} ${finalArgs.join(' ')}`);
 								outputChannel.appendLine(`[test-options] Working directory: ${testProjectPath}`);
 
+								const procEnv = { ...process.env, ...profileConfig.env };
+
 								try {
-									const proc = cp.spawn(executable, finalArgs, { cwd: testProjectPath });
+									const proc = cp.spawn(executable, finalArgs, { cwd: testProjectPath, env: procEnv });
 									outputChannel.appendLine('[test-options] Spawned test process.');
 
 									let output = '';
@@ -265,7 +268,7 @@ let disposableProfiles: vscode.Disposable[] = [];
 	// --- Register the command for the CodeLens ---
 	context.subscriptions.push(
 		vscode.commands.registerCommand('test-options.recordTestTerminal', (filePath: string, testName: string, profile: ITestProfile) => {
-			const { commandExecutable, commandArgsTemplate, name, args } = profile;
+			const { commandExecutable, commandArgsTemplate, name, args, env } = profile;
 			const runProfileName = name;
 			const runProfileArgs = args || [];
 			const testProjectPath = path.dirname(filePath);
@@ -277,10 +280,11 @@ let disposableProfiles: vscode.Disposable[] = [];
 			);
 			const finalArgs = [...processedArgs, ...runProfileArgs];
 
-			const terminal = vscode.window.createTerminal(runProfileName);
+			const terminal = vscode.window.createTerminal({ name: runProfileName, cwd: testProjectPath, env: env });
 			terminal.show();
-			terminal.sendText(`cd "${testProjectPath}"`);
-			terminal.sendText(`${commandExecutable} ${finalArgs.join(' ')}`);
+
+			const commandString = `${commandExecutable} ${finalArgs.join(' ')}`.trim();
+			terminal.sendText(commandString);
 		})
 	);
 }
