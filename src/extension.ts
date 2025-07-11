@@ -290,6 +290,9 @@ let disposableProfiles: vscode.Disposable[] = [];
 	);
 
 	// --- Register the command for the CodeLens ---
+	// --- Terminal reuse logic ---
+	const testTerminals: Map<string, vscode.Terminal> = new Map();
+
 	context.subscriptions.push(
 		vscode.commands.registerCommand('test-options.recordTestTerminal', (filePath: string, testName: string, profile: ITestProfile) => {
 			const { commandExecutable, commandArgsTemplate, name, args, env } = profile;
@@ -304,13 +307,32 @@ let disposableProfiles: vscode.Disposable[] = [];
 			);
 			const finalArgs = [...processedArgs, ...runProfileArgs];
 
-			const terminal = vscode.window.createTerminal({ name: runProfileName, cwd: testProjectPath, env: env });
+			// Key for terminal reuse: profile name + cwd + env (stringified)
+			const envKey = env ? JSON.stringify(env) : '';
+			const terminalKey = `${runProfileName}|${testProjectPath}|${envKey}`;
+
+			let terminal = testTerminals.get(terminalKey);
+			// Check if terminal is still open (not disposed)
+			if (!terminal || (terminal as any)._disposed) {
+				terminal = vscode.window.createTerminal({ name: runProfileName, cwd: testProjectPath, env: env });
+				testTerminals.set(terminalKey, terminal);
+			}
+
 			terminal.show();
 
 			const commandString = `${commandExecutable} ${finalArgs.join(' ')}`.trim();
 			terminal.sendText(commandString);
 		})
 	);
+
+	// Clean up closed terminals from the map
+	vscode.window.onDidCloseTerminal((closedTerminal) => {
+		for (const [key, term] of testTerminals.entries()) {
+			if (term === closedTerminal) {
+				testTerminals.delete(key);
+			}
+		}
+	});
 }
 
 // This method is called when your extension is deactivated
