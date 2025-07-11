@@ -32,23 +32,15 @@ Here’s how you can set up profiles for running standard Go tests, tests with c
             "commandExecutable": "go",
             "commandArgsTemplate": [ "test", "-v", "-run", "^{{testName}}$" ],
             "testFilePattern": "**/*_test.go",
-            "testFunctionRegex": "^func (Test\\w+)\\s*\\(",
+            "testFunctionRegex": "^func (Test\\w+)\\s*\\(|^[ \\t]*t\\.Run\\(\\\"([^\\\"]+)\\\"",
             "args": [ "-record" ]
-        },
-        {
-            "name": "Go: run with coverage",
-            "commandExecutable": "go",
-            "commandArgsTemplate": [ "test", "-v", "-run", "^{{testName}}$" ],
-            "testFilePattern": "**/*_test.go",
-            "testFunctionRegex": "^func (Test\\w+)\\s*\\(",
-            "args": [ "-cover" ]
         },
         {
             "name": "Go: record test (env)",
             "commandExecutable": "go",
             "commandArgsTemplate": [ "test", "-v", "-run", "^{{testName}}$" ],
             "testFilePattern": "**/*_test.go",
-            "testFunctionRegex": "^func (Test\\w+)\\s*\\(",
+            "testFunctionRegex": "^func (Test\\w+)\\s*\\(|^[ \\t]*t\\.Run\\(\\\"([^\\\"]+)\\\"",
             "args": [],
             "env": { "COPYIST_RECORD": "1" }
         }
