@@ -26,12 +26,12 @@ export function activate(context: vscode.ExtensionContext) {
 		context.subscriptions.push(controller);
 		console.log('[test-options] Test controller registered:', controller.id);
 
-		// Add a run profile for "record Test"
+		// Add a run profile for "record test"
 		const recordProfile = controller.createRunProfile(
-			'record Test',
+			'record test',
 			vscode.TestRunProfileKind.Run,
 			async (request, token) => {
-				console.log('[test-options] record Test run profile triggered.');
+				console.log('[test-options] record test run profile triggered.');
 				const run = controller.createTestRun(request);
 				
 				for (const test of request.include || []) {
@@ -41,7 +41,7 @@ export function activate(context: vscode.ExtensionContext) {
 					
 					if (testUri) {
 						const goProjectPath = path.dirname(testUri.fsPath);
-						const outputChannel = vscode.window.createOutputChannel('record Test');
+						const outputChannel = vscode.window.createOutputChannel('record test');
 						outputChannel.show(true);
 						outputChannel.appendLine(`[test-options] Running: go test -v -run ^${testName}$ -record`);
 						outputChannel.appendLine(`[test-options] Working directory: ${goProjectPath}`);
@@ -90,7 +90,7 @@ export function activate(context: vscode.ExtensionContext) {
 			false // not default
 		);
 		context.subscriptions.push(recordProfile);
-		console.log('[test-options] record Test run profile registered.');
+		console.log('[test-options] record test run profile registered.');
 
 		// Function to discover and register tests from a Go test file
 		const discoverTestsInFile = async (uri: vscode.Uri) => {
@@ -175,7 +175,7 @@ export function activate(context: vscode.ExtensionContext) {
 				const line = document.positionAt(match.index).line;
 				const range = new vscode.Range(line, 0, line, 0);
 				lenses.push(new vscode.CodeLens(range, {
-					title: 'record Test',
+					title: 'record test',
 					command: 'test-options.recordTestTerminal',
 					arguments: [document.uri.fsPath, match[1]]
 				}));
@@ -191,7 +191,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('test-options.recordTestTerminal', (filePath: string, testName: string) => {
 			const goProjectPath = path.dirname(filePath);
-			const terminal = vscode.window.createTerminal('record Test');
+			const terminal = vscode.window.createTerminal('record test');
 			terminal.show();
 			terminal.sendText(`cd "${goProjectPath}"`);
 			terminal.sendText(`go test -v -run ^${testName}$ -record`);
