@@ -1,28 +1,34 @@
 {
-    // The executable to run for testing.
-    "test-options.commandExecutable": "go",
-
-    // Template for arguments for the base command.
-    // Placeholders: {{testName}}, {{testFile}}, {{testProjectPath}}
-    "test-options.commandArgsTemplate": [
-        "test",
-        "-v",
-        "-run",
-        "^{{testName}}$"
-    ],
-
-    // Glob pattern to identify test files.
-    "test-options.testFilePattern": "**/*_test.go",
-
-    // Regex to find test functions within a test file.
-    // Must contain one capturing group for the test name.
-    "test-options.testFunctionRegex": "^func (Test\\w+)\\s*\\(",
-
-    // The name for the custom test run profile and CodeLens action.
-    "test-options.runProfileName": "record test",
-
-    // Additional arguments to pass for this specific run profile.
-    "test-options.runProfileArgs": [
-        "-record"
+    // A list of custom test run profiles.
+    "test-options.profiles": [
+        {
+            "name": "Go: record test",
+            "commandExecutable": "go",
+            "commandArgsTemplate": [ "test", "-v", "-run", "^{{testName}}$" ],
+            "testFilePattern": "**/*_test.go",
+            "testFunctionRegex": "^func (Test\\w+)\\s*\\(",
+            "args": [ "-record" ]
+        },
+        {
+            "name": "Go: run with coverage",
+            "commandExecutable": "go",
+            "commandArgsTemplate": [ "test", "-v", "-run", "^{{testName}}$" ],
+            "testFilePattern": "**/*_test.go",
+            "testFunctionRegex": "^func (Test\\w+)\\s*\\(",
+            "args": [ "-cover" ]
+        },
+        {
+            "name": "Jest: run test",
+            "commandExecutable": "npx",
+            "commandArgsTemplate": [
+                "jest",
+                "{{testFile}}",
+                "--testNamePattern",
+                "^{{testName}}$"
+            ],
+            "testFilePattern": "**/*.{test,spec}.{js,ts}",
+            "testFunctionRegex": "^(?:it|test)\\(['\"]([^'\"]+)['\"]",
+            "args": []
+        }
     ]
 }

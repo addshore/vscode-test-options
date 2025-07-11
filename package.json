@@ -26,47 +26,61 @@
     "configuration": {
       "title": "Test Options",
       "properties": {
-        "test-options.commandExecutable": {
-          "type": "string",
-          "default": "go",
-          "description": "The executable to run for testing."
-        },
-        "test-options.commandArgsTemplate": {
+        "test-options.profiles": {
           "type": "array",
+          "description": "A list of custom test run profiles.",
           "default": [
-            "test",
-            "-v",
-            "-run",
-            "^{{testName}}$"
+            {
+              "name": "record test",
+              "commandExecutable": "go",
+              "commandArgsTemplate": [ "test", "-v", "-run", "^{{testName}}$" ],
+              "testFilePattern": "**/*_test.go",
+              "testFunctionRegex": "^func (Test\\w+)\\s*\\(",
+              "args": [ "-record" ]
+            }
           ],
-          "description": "Template for arguments for the base command. Use placeholders like {{testName}}, {{testFile}}, and {{testProjectPath}}.",
           "items": {
-            "type": "string"
-          }
-        },
-        "test-options.testFilePattern": {
-          "type": "string",
-          "default": "**/*_test.go",
-          "description": "Glob pattern to identify test files."
-        },
-        "test-options.testFunctionRegex": {
-          "type": "string",
-          "default": "^func (Test\\w+)\\s*\\(",
-          "description": "Regex to find test functions within a test file. Must contain one capturing group for the test name."
-        },
-        "test-options.runProfileName": {
-          "type": "string",
-          "default": "record test",
-          "description": "The name for the custom test run profile and CodeLens action."
-        },
-        "test-options.runProfileArgs": {
-          "type": "array",
-          "default": [
-            "-record"
-          ],
-          "description": "Arguments to pass to 'go test' for the custom run profile.",
-          "items": {
-            "type": "string"
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The name for the custom test run profile."
+              },
+              "commandExecutable": {
+                "type": "string",
+                "description": "The executable to run for testing (e.g., 'go', 'npx')."
+              },
+              "commandArgsTemplate": {
+                "type": "array",
+                "description": "Template for arguments for the base command. Use placeholders like {{testName}}, {{testFile}}, and {{testProjectPath}}.",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "testFilePattern": {
+                "type": "string",
+                "description": "Glob pattern to identify test files (e.g., '**/*_test.go')."
+              },
+              "testFunctionRegex": {
+                "type": "string",
+                "description": "Regex to find test functions within a test file. Must contain one capturing group for the test name."
+              },
+              "args": {
+                "type": "array",
+                "description": "Additional arguments to pass for this run profile.",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "name",
+              "args",
+              "commandExecutable",
+              "commandArgsTemplate",
+              "testFilePattern",
+              "testFunctionRegex"
+            ]
           }
         }
       }
