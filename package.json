@@ -3,6 +3,7 @@
   "displayName": "Test Options",
   "description": "",
   "version": "0.0.1",
+  "publisher": "addshore",
   "homepage": "https://github.com/addshore/vscode-test-options",
   "repository": {
     "type": "git",
