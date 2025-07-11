@@ -6,26 +6,27 @@ import * as vscode from 'vscode';
 // Your extension is activated the very first time the command is executed
 import * as cp from 'child_process';
 import * as path from 'path';
+import * as micromatch from 'micromatch';
 
 export function activate(context: vscode.ExtensionContext) {
-	console.log('Congratulations, your extension "test-options" is now active!');
-
 	// Debug output: Extension activated
 	console.log('[test-options] Extension activated. Checking for vscode.tests:', !!vscode.tests);
 
 	const getCommandExecutable = () => vscode.workspace.getConfiguration('test-options').get<string>('commandExecutable', 'go');
 	const getCommandArgsTemplate = () => vscode.workspace.getConfiguration('test-options').get<string[]>('commandArgsTemplate', ['test', '-v', '-run', '^{{testName}}$']);
+	const getTestFilePattern = () => vscode.workspace.getConfiguration('test-options').get<string>('testFilePattern', '**/*_test.go');
+	const getTestFunctionRegex = () => vscode.workspace.getConfiguration('test-options').get<string>('testFunctionRegex', '^func (Test\\w+)\\s*\\(');
 	const getRunProfileName = () => vscode.workspace.getConfiguration('test-options').get<string>('runProfileName', 'record test');
 	const getRunProfileArgs = () => vscode.workspace.getConfiguration('test-options').get<string[]>('runProfileArgs', ['-record']);
 
-	// Register test controller and auto-discover Go tests
+	// Register test controller and auto-discover tests
 	if (vscode.tests) {
 		console.log('[test-options] Registering test controller...');
 		const controller = vscode.tests.createTestController('test-options-controller', 'Test Options Controller');
 		context.subscriptions.push(controller);
 		console.log('[test-options] Test controller registered:', controller.id);
 
-		// Add a run profile for "record test"
+		// Add a custom run profile
 		const recordProfile = controller.createRunProfile(
 			getRunProfileName(),
 			vscode.TestRunProfileKind.Run,
@@ -60,7 +61,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 						try {
 							const proc = cp.spawn(executable, finalArgs, { cwd: testProjectPath });
-							outputChannel.appendLine('[test-options] Spawned go test process.');
+							outputChannel.appendLine('[test-options] Spawned test process.');
 
 							let output = '';
 							proc.stdout.on('data', (data) => {
@@ -92,7 +93,7 @@ export function activate(context: vscode.ExtensionContext) {
 							});
 						} catch (err) {
 							const errorMessage = err instanceof Error ? err.message : String(err);
-							outputChannel.appendLine('[test-options] Error running go test: ' + errorMessage);
+							outputChannel.appendLine('[test-options] Error running test command: ' + errorMessage);
 							run.failed(test, new vscode.TestMessage(errorMessage));
 							run.end();
 						}
@@ -111,12 +112,13 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		}));
 
-		// Function to discover and register tests from a Go test file
+		// Function to discover and register tests from a test file
 		const discoverTestsInFile = async (uri: vscode.Uri) => {
 			try {
 				const document = await vscode.workspace.openTextDocument(uri);
 				const text = document.getText();
-				const regex = /^func (Test\w+)\s*\(/gm;
+				const regexString = getTestFunctionRegex();
+				const regex = new RegExp(regexString, 'gm');
 				let match;
 
 				// Create a file-level test item
@@ -144,51 +146,70 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		};
 
-		// Watch for Go test files being opened
-		const onDidOpenTextDocument = vscode.workspace.onDidOpenTextDocument((document) => {
-			if (document.fileName.endsWith('_test.go')) {
-				console.log(`[test-options] Go test file opened: ${document.fileName}`);
-				discoverTestsInFile(document.uri);
-			}
-		});
-		context.subscriptions.push(onDidOpenTextDocument);
+		let fileWatcher: vscode.FileSystemWatcher;
+		let openDocumentListener: vscode.Disposable;
 
-		// Scan already open documents for Go test files
+		const setupWatchers = () => {
+			// Dispose old watchers if they exist
+			if (fileWatcher) { fileWatcher.dispose(); }
+			if (openDocumentListener) { openDocumentListener.dispose(); }
+
+			const filePattern = getTestFilePattern();
+
+			// Watch for test files being opened
+			openDocumentListener = vscode.workspace.onDidOpenTextDocument((document) => {
+				if (micromatch.isMatch(document.fileName, filePattern)) {
+					console.log(`[test-options] Test file opened: ${document.fileName}`);
+					discoverTestsInFile(document.uri);
+				}
+			});
+
+			// Also watch for file system changes to discover new/changed test files
+			fileWatcher = vscode.workspace.createFileSystemWatcher(filePattern);
+			fileWatcher.onDidCreate((uri) => {
+				console.log(`[test-options] New test file created: ${uri.fsPath}`);
+				discoverTestsInFile(uri);
+			});
+			fileWatcher.onDidChange((uri) => {
+				console.log(`[test-options] Test file changed: ${uri.fsPath}`);
+				controller.items.delete(uri.toString());
+				discoverTestsInFile(uri);
+			});
+			fileWatcher.onDidDelete((uri) => {
+				console.log(`[test-options] Test file deleted: ${uri.fsPath}`);
+				controller.items.delete(uri.toString());
+			});
+
+			context.subscriptions.push(fileWatcher, openDocumentListener);
+		};
+
+		// Initial setup
+		setupWatchers();
+
+		// Scan already open documents for test files
 		vscode.workspace.textDocuments.forEach((document) => {
-			if (document.fileName.endsWith('_test.go')) {
-				console.log(`[test-options] Found already open Go test file: ${document.fileName}`);
+			if (micromatch.isMatch(document.fileName, getTestFilePattern())) {
+				console.log(`[test-options] Found already open test file: ${document.fileName}`);
 				discoverTestsInFile(document.uri);
 			}
 		});
-
-		// Also watch for file system changes to discover new test files
-		const watcher = vscode.workspace.createFileSystemWatcher('**/*_test.go');
-		watcher.onDidCreate((uri) => {
-			console.log(`[test-options] New Go test file created: ${uri.fsPath}`);
-			discoverTestsInFile(uri);
-		});
-		watcher.onDidChange((uri) => {
-			console.log(`[test-options] Go test file changed: ${uri.fsPath}`);
-			// Remove existing items for this file and re-discover
-			controller.items.delete(uri.toString());
-			discoverTestsInFile(uri);
-		});
-		watcher.onDidDelete((uri) => {
-			console.log(`[test-options] Go test file deleted: ${uri.fsPath}`);
-			controller.items.delete(uri.toString());
-		});
-		context.subscriptions.push(watcher);
 
 	} else {
 		console.log('[test-options] vscode.tests API not available.');
 	}
 
-	// --- Custom CodeLensProvider for Go test functions ---
-	class GoTestCodeLensProvider implements vscode.CodeLensProvider {
+	// --- Custom CodeLensProvider for test functions ---
+	class TestCodeLensProvider implements vscode.CodeLensProvider {
 		provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {
+			const filePattern = getTestFilePattern();
+			if (!micromatch.isMatch(document.fileName, filePattern)) {
+				return [];
+			}
+
 			const runProfileName = vscode.workspace.getConfiguration('test-options').get<string>('runProfileName', 'record test');
 			const lenses: vscode.CodeLens[] = [];
-			const regex = /^func (Test\w+)\s*\(/gm;
+			const regexString = getTestFunctionRegex();
+			const regex = new RegExp(regexString, 'gm');
 			const text = document.getText();
 			let match;
 			while ((match = regex.exec(text))) {
@@ -204,7 +225,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	}
 	context.subscriptions.push(
-		vscode.languages.registerCodeLensProvider({ language: 'go', scheme: 'file' }, new GoTestCodeLensProvider())
+		vscode.languages.registerCodeLensProvider({ scheme: 'file' }, new TestCodeLensProvider())
 	);
 
 	// --- Register the command for the CodeLens ---
@@ -232,4 +253,4 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }

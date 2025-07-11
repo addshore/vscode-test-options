@@ -1,6 +1,6 @@
 {
   "name": "test-options",
-  "displayName": "test-options",
+  "displayName": "Test Options",
   "description": "",
   "version": "0.0.1",
   "engines": {
@@ -10,8 +10,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onLanguage:go",
-    "workspaceContains:**/*_test.go"
+    "*"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -22,9 +21,7 @@
       }
     ],
     "codeLens": [
-      {
-        "language": "go"
-      }
+      {}
     ],
     "configuration": {
       "title": "Test Options",
@@ -46,6 +43,16 @@
           "items": {
             "type": "string"
           }
+        },
+        "test-options.testFilePattern": {
+          "type": "string",
+          "default": "**/*_test.go",
+          "description": "Glob pattern to identify test files."
+        },
+        "test-options.testFunctionRegex": {
+          "type": "string",
+          "default": "^func (Test\\w+)\\s*\\(",
+          "description": "Regex to find test functions within a test file. Must contain one capturing group for the test name."
         },
         "test-options.runProfileName": {
           "type": "string",
@@ -74,14 +81,16 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.102.0",
+    "@types/micromatch": "^4.0.9",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
+    "@types/vscode": "^1.102.0",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
-    "eslint": "^9.25.1",
-    "typescript": "^5.8.3",
     "@vscode/test-cli": "^0.0.11",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.25.1",
+    "micromatch": "^4.0.8",
+    "typescript": "^5.8.3"
   }
 }

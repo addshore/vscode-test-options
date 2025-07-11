@@ -11,6 +11,13 @@
         "^{{testName}}$"
     ],
 
+    // Glob pattern to identify test files.
+    "test-options.testFilePattern": "**/*_test.go",
+
+    // Regex to find test functions within a test file.
+    // Must contain one capturing group for the test name.
+    "test-options.testFunctionRegex": "^func (Test\\w+)\\s*\\(",
+
     // The name for the custom test run profile and CodeLens action.
     "test-options.runProfileName": "record test",
 
