@@ -2,7 +2,7 @@
   "name": "test-options",
   "displayName": "Test Options",
   "description": "",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "addshore",
   "homepage": "https://github.com/addshore/vscode-test-options",
   "repository": {
