@@ -2,6 +2,10 @@
 
 Test Options is a Visual Studio Code extension that enhances your testing workflow by allowing you to define multiple, highly-configurable test run profiles. It's designed to be language-agnostic, so you can tailor it to run tests with different arguments, environment variables, or even different test runners, all within the same project.
 
+Such as in go for copyist easy test recording.
+
+![Test Options](https://i.imgur.com/fdetFrs.png)
+
 ## Features
 
 - **Multiple Run Profiles**: Define several ways to run your tests (e.g., with coverage, with recording, in a specific environment).
