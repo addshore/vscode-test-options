@@ -13,15 +13,17 @@ export function activate(context: vscode.ExtensionContext) {
 	// Debug output: Extension activated
 	console.log('[test-options] Extension activated. Checking for vscode.tests:', !!vscode.tests);
 
+	const getCommandExecutable = () => vscode.workspace.getConfiguration('test-options').get<string>('commandExecutable', 'go');
+	const getCommandArgsTemplate = () => vscode.workspace.getConfiguration('test-options').get<string[]>('commandArgsTemplate', ['test', '-v', '-run', '^{{testName}}$']);
+	const getRunProfileName = () => vscode.workspace.getConfiguration('test-options').get<string>('runProfileName', 'record test');
+	const getRunProfileArgs = () => vscode.workspace.getConfiguration('test-options').get<string[]>('runProfileArgs', ['-record']);
+
 	// Register test controller and auto-discover Go tests
 	if (vscode.tests) {
 		console.log('[test-options] Registering test controller...');
 		const controller = vscode.tests.createTestController('test-options-controller', 'Test Options Controller');
 		context.subscriptions.push(controller);
 		console.log('[test-options] Test controller registered:', controller.id);
-
-		const getRunProfileName = () => vscode.workspace.getConfiguration('test-options').get<string>('runProfileName', 'record test');
-		const getRunProfileArgs = () => vscode.workspace.getConfiguration('test-options').get<string[]>('runProfileArgs', ['-record']);
 
 		// Add a run profile for "record test"
 		const recordProfile = controller.createRunProfile(
@@ -37,15 +39,27 @@ export function activate(context: vscode.ExtensionContext) {
 					const testName = test.id.split('/').pop(); // Get test function name
 
 					if (testUri) {
-						const goProjectPath = path.dirname(testUri.fsPath);
+						const testProjectPath = path.dirname(testUri.fsPath);
+						const testFile = testUri.fsPath;
+
+						const executable = getCommandExecutable();
+						const argsTemplate = getCommandArgsTemplate();
 						const runArgs = getRunProfileArgs();
+
+						const processedArgs = argsTemplate.map((arg: string) =>
+							arg.replace(/{{testName}}/g, testName!)
+								.replace(/{{testFile}}/g, testFile)
+								.replace(/{{testProjectPath}}/g, testProjectPath)
+						);
+						const finalArgs = [...processedArgs, ...runArgs];
+
 						const outputChannel = vscode.window.createOutputChannel(getRunProfileName());
 						outputChannel.show(true);
-						outputChannel.appendLine(`[test-options] Running: go test -v -run ^${testName}$ ${runArgs.join(' ')}`);
-						outputChannel.appendLine(`[test-options] Working directory: ${goProjectPath}`);
+						outputChannel.appendLine(`[test-options] Running: ${executable} ${finalArgs.join(' ')}`);
+						outputChannel.appendLine(`[test-options] Working directory: ${testProjectPath}`);
 
 						try {
-							const proc = cp.spawn('go', ['test', '-v', '-run', `^${testName}$`, ...runArgs], { cwd: goProjectPath });
+							const proc = cp.spawn(executable, finalArgs, { cwd: testProjectPath });
 							outputChannel.appendLine('[test-options] Spawned go test process.');
 
 							let output = '';
@@ -196,13 +210,23 @@ export function activate(context: vscode.ExtensionContext) {
 	// --- Register the command for the CodeLens ---
 	context.subscriptions.push(
 		vscode.commands.registerCommand('test-options.recordTestTerminal', (filePath: string, testName: string) => {
+			const executable = getCommandExecutable();
+			const argsTemplate = getCommandArgsTemplate();
 			const runProfileName = vscode.workspace.getConfiguration('test-options').get<string>('runProfileName', 'record test');
 			const runProfileArgs = vscode.workspace.getConfiguration('test-options').get<string[]>('runProfileArgs', ['-record']);
-			const goProjectPath = path.dirname(filePath);
+			const testProjectPath = path.dirname(filePath);
+
+			const processedArgs = argsTemplate.map((arg: string) =>
+				arg.replace(/{{testName}}/g, testName)
+					.replace(/{{testFile}}/g, filePath)
+					.replace(/{{testProjectPath}}/g, testProjectPath)
+			);
+			const finalArgs = [...processedArgs, ...runProfileArgs];
+
 			const terminal = vscode.window.createTerminal(runProfileName);
 			terminal.show();
-			terminal.sendText(`cd "${goProjectPath}"`);
-			terminal.sendText(`go test -v -run ^${testName}$ ${runProfileArgs.join(' ')}`);
+			terminal.sendText(`cd "${testProjectPath}"`);
+			terminal.sendText(`${executable} ${finalArgs.join(' ')}`);
 		})
 	);
 }

@@ -1,5 +1,20 @@
 {
+    // The executable to run for testing.
+    "test-options.commandExecutable": "go",
+
+    // Template for arguments for the base command.
+    // Placeholders: {{testName}}, {{testFile}}, {{testProjectPath}}
+    "test-options.commandArgsTemplate": [
+        "test",
+        "-v",
+        "-run",
+        "^{{testName}}$"
+    ],
+
+    // The name for the custom test run profile and CodeLens action.
     "test-options.runProfileName": "record test",
+
+    // Additional arguments to pass for this specific run profile.
     "test-options.runProfileArgs": [
         "-record"
     ]

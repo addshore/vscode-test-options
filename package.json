@@ -25,7 +25,45 @@
       {
         "language": "go"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Test Options",
+      "properties": {
+        "test-options.commandExecutable": {
+          "type": "string",
+          "default": "go",
+          "description": "The executable to run for testing."
+        },
+        "test-options.commandArgsTemplate": {
+          "type": "array",
+          "default": [
+            "test",
+            "-v",
+            "-run",
+            "^{{testName}}$"
+          ],
+          "description": "Template for arguments for the base command. Use placeholders like {{testName}}, {{testFile}}, and {{testProjectPath}}.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "test-options.runProfileName": {
+          "type": "string",
+          "default": "record test",
+          "description": "The name for the custom test run profile and CodeLens action."
+        },
+        "test-options.runProfileArgs": {
+          "type": "array",
+          "default": [
+            "-record"
+          ],
+          "description": "Arguments to pass to 'go test' for the custom run profile.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
