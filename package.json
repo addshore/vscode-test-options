@@ -2,7 +2,7 @@
   "name": "test-options",
   "displayName": "Test Options",
   "description": "",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "addshore",
   "homepage": "https://github.com/addshore/vscode-test-options",
   "repository": {
@@ -102,6 +102,9 @@
       }
     }
   },
+  "dependencies": {
+    "micromatch": "^4.0.8"
+  },
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
@@ -120,7 +123,6 @@
     "@vscode/test-cli": "^0.0.11",
     "@vscode/test-electron": "^2.5.2",
     "eslint": "^9.25.1",
-    "micromatch": "^4.0.8",
     "typescript": "^5.8.3"
   }
 }
