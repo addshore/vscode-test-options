@@ -20,30 +20,34 @@ export function activate(context: vscode.ExtensionContext) {
 		context.subscriptions.push(controller);
 		console.log('[test-options] Test controller registered:', controller.id);
 
+		const getRunProfileName = () => vscode.workspace.getConfiguration('test-options').get<string>('runProfileName', 'record test');
+		const getRunProfileArgs = () => vscode.workspace.getConfiguration('test-options').get<string[]>('runProfileArgs', ['-record']);
+
 		// Add a run profile for "record test"
 		const recordProfile = controller.createRunProfile(
-			'record test',
+			getRunProfileName(),
 			vscode.TestRunProfileKind.Run,
 			async (request, token) => {
 				console.log('[test-options] record test run profile triggered.');
 				const run = controller.createTestRun(request);
-				
+
 				for (const test of request.include || []) {
 					run.started(test);
 					const testUri = test.uri;
 					const testName = test.id.split('/').pop(); // Get test function name
-					
+
 					if (testUri) {
 						const goProjectPath = path.dirname(testUri.fsPath);
-						const outputChannel = vscode.window.createOutputChannel('record test');
+						const runArgs = getRunProfileArgs();
+						const outputChannel = vscode.window.createOutputChannel(getRunProfileName());
 						outputChannel.show(true);
-						outputChannel.appendLine(`[test-options] Running: go test -v -run ^${testName}$ -record`);
+						outputChannel.appendLine(`[test-options] Running: go test -v -run ^${testName}$ ${runArgs.join(' ')}`);
 						outputChannel.appendLine(`[test-options] Working directory: ${goProjectPath}`);
-						
+
 						try {
-							const proc = cp.spawn('go', ['test', '-v', '-run', `^${testName}$`, '-record'], { cwd: goProjectPath });
+							const proc = cp.spawn('go', ['test', '-v', '-run', `^${testName}$`, ...runArgs], { cwd: goProjectPath });
 							outputChannel.appendLine('[test-options] Spawned go test process.');
-							
+
 							let output = '';
 							proc.stdout.on('data', (data) => {
 								const text = data.toString();
@@ -55,7 +59,7 @@ export function activate(context: vscode.ExtensionContext) {
 								output += text;
 								outputChannel.append(text);
 							});
-							
+
 							proc.on('close', (code) => {
 								outputChannel.appendLine(`\n[test-options] Process exited with code ${code}`);
 								if (code === 0) {
@@ -65,7 +69,7 @@ export function activate(context: vscode.ExtensionContext) {
 								}
 								run.end();
 							});
-							
+
 							proc.on('error', (err) => {
 								const errorMessage = err instanceof Error ? err.message : String(err);
 								outputChannel.appendLine('[test-options] Failed to start process: ' + errorMessage);
@@ -86,6 +90,13 @@ export function activate(context: vscode.ExtensionContext) {
 		context.subscriptions.push(recordProfile);
 		console.log('[test-options] record test run profile registered.');
 
+		// Update profile name on configuration change
+		context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
+			if (e.affectsConfiguration('test-options.runProfileName')) {
+				recordProfile.label = getRunProfileName();
+			}
+		}));
+
 		// Function to discover and register tests from a Go test file
 		const discoverTestsInFile = async (uri: vscode.Uri) => {
 			try {
@@ -93,16 +104,16 @@ export function activate(context: vscode.ExtensionContext) {
 				const text = document.getText();
 				const regex = /^func (Test\w+)\s*\(/gm;
 				let match;
-				
+
 				// Create a file-level test item
 				const fileItem = controller.createTestItem(uri.toString(), path.basename(uri.fsPath), uri);
 				controller.items.add(fileItem);
-				
+
 				while ((match = regex.exec(text))) {
 					const testName = match[1];
 					const line = document.positionAt(match.index).line;
 					const range = new vscode.Range(line, 0, line, match[0].length);
-					
+
 					// Create test item for each test function
 					const testItem = controller.createTestItem(
 						`${uri.toString()}/${testName}`,
@@ -112,7 +123,7 @@ export function activate(context: vscode.ExtensionContext) {
 					testItem.range = range;
 					fileItem.children.add(testItem);
 				}
-				
+
 				console.log(`[test-options] Discovered tests in ${uri.fsPath}`);
 			} catch (error) {
 				console.error(`[test-options] Error discovering tests in ${uri.fsPath}:`, error);
@@ -161,6 +172,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// --- Custom CodeLensProvider for Go test functions ---
 	class GoTestCodeLensProvider implements vscode.CodeLensProvider {
 		provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {
+			const runProfileName = vscode.workspace.getConfiguration('test-options').get<string>('runProfileName', 'record test');
 			const lenses: vscode.CodeLens[] = [];
 			const regex = /^func (Test\w+)\s*\(/gm;
 			const text = document.getText();
@@ -169,7 +181,7 @@ export function activate(context: vscode.ExtensionContext) {
 				const line = document.positionAt(match.index).line;
 				const range = new vscode.Range(line, 0, line, 0);
 				lenses.push(new vscode.CodeLens(range, {
-					title: 'record test',
+					title: runProfileName,
 					command: 'test-options.recordTestTerminal',
 					arguments: [document.uri.fsPath, match[1]]
 				}));
@@ -184,11 +196,13 @@ export function activate(context: vscode.ExtensionContext) {
 	// --- Register the command for the CodeLens ---
 	context.subscriptions.push(
 		vscode.commands.registerCommand('test-options.recordTestTerminal', (filePath: string, testName: string) => {
+			const runProfileName = vscode.workspace.getConfiguration('test-options').get<string>('runProfileName', 'record test');
+			const runProfileArgs = vscode.workspace.getConfiguration('test-options').get<string[]>('runProfileArgs', ['-record']);
 			const goProjectPath = path.dirname(filePath);
-			const terminal = vscode.window.createTerminal('record test');
+			const terminal = vscode.window.createTerminal(runProfileName);
 			terminal.show();
 			terminal.sendText(`cd "${goProjectPath}"`);
-			terminal.sendText(`go test -v -run ^${testName}$ -record`);
+			terminal.sendText(`go test -v -run ^${testName}$ ${runProfileArgs.join(' ')}`);
 		})
 	);
 }

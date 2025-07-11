@@ -1,0 +1,6 @@
+{
+    "test-options.runProfileName": "record test",
+    "test-options.runProfileArgs": [
+        "-record"
+    ]
+}
