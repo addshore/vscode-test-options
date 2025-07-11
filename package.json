@@ -3,6 +3,14 @@
   "displayName": "Test Options",
   "description": "",
   "version": "0.0.1",
+  "homepage": "https://github.com/addshore/vscode-test-options",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/addshore/vscode-test-options.git"
+  },
+  "bugs": {
+    "url": "https://github.com/addshore/vscode-test-options/issues"
+  },
   "engines": {
     "vscode": ">=1.101.2"
   },
