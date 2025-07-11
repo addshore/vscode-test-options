@@ -54,16 +54,14 @@ let disposableProfiles: vscode.Disposable[] = [];
 
 						for (const test of request.include || []) {
 							run.started(test);
-							const testUri = test.uri;
-							const testName = test.id.split('/').pop(); // Get test function name
+							const testUri = test.uri; // The URI of the test file.
 
 							if (testUri) {
+								const testName = test.id.substring(testUri.toString().length + 1); // Get test name from ID
 								const testProjectPath = path.dirname(testUri.fsPath);
 								const testFile = testUri.fsPath;
 
-								const executable = profileConfig.commandExecutable;
-								const argsTemplate = profileConfig.commandArgsTemplate;
-								const runArgs = profileConfig.args;
+								const { commandExecutable: executable, commandArgsTemplate: argsTemplate, args: runArgs } = profileConfig;
 
 								const processedArgs = argsTemplate.map((arg: string) =>
 									arg.replace(/{{testName}}/g, testName!)
@@ -157,19 +155,28 @@ let disposableProfiles: vscode.Disposable[] = [];
 				const fileItem = controller.createTestItem(uri.toString(), path.basename(uri.fsPath), uri);
 				controller.items.add(fileItem);
 
+				let lastTestFuncItem: vscode.TestItem | undefined;
+
 				while ((match = regex.exec(text))) {
-					const testName = match[1];
+					// The first capture group is the test function name, the second is the subtest name.
+					// This is based on a regex like: ^func (Test\w+)\s*\(|^\s*t\.Run\("([^"]+)"
+					const testFuncName = match[1];
+					const subtestName = match[2];
+
 					const line = document.positionAt(match.index).line;
 					const range = new vscode.Range(line, 0, line, match[0].length);
 
-					// Create test item for each test function
-					const testItem = controller.createTestItem(
-						`${uri.toString()}/${testName}`,
-						testName,
-						uri
-					);
-					testItem.range = range;
-					fileItem.children.add(testItem);
+					if (testFuncName) {
+						const testItem = controller.createTestItem(`${uri.toString()}/${testFuncName}`, testFuncName, uri);
+						testItem.range = range;
+						fileItem.children.add(testItem);
+						lastTestFuncItem = testItem;
+					} else if (subtestName && lastTestFuncItem) {
+						// The ID needs to be the full path to the subtest for `go test` to be able to run it.
+						const subtestItem = controller.createTestItem(`${uri.toString()}/${lastTestFuncItem.label}/${subtestName}`, subtestName, uri);
+						subtestItem.range = range;
+						lastTestFuncItem.children.add(subtestItem);
+					}
 				}
 
 				console.log(`[test-options] Discovered tests in ${uri.fsPath}`);
@@ -247,14 +254,31 @@ let disposableProfiles: vscode.Disposable[] = [];
 					// This profile is relevant. Find all tests in the file that match its regex.
 					const regex = new RegExp(profile.testFunctionRegex, 'gm');
 					let match;
+					let lastTestFuncName: string | undefined;
 					while ((match = regex.exec(text))) {
+						// The first capture group is the test function name, the second is the subtest name.
+						// This is based on a regex like: ^func (Test\w+)\s*\(|^\s*t\.Run\("([^"]+)"
+						const testFuncName = match[1];
+						const subtestName = match[2];
+
 						const line = document.positionAt(match.index).line;
 						const range = new vscode.Range(line, 0, line, 0);
-						lenses.push(new vscode.CodeLens(range, {
-							title: profile.name,
-							command: 'test-options.recordTestTerminal',
-							arguments: [document.uri.fsPath, match[1], profile]
-						}));
+
+						let lensTestName: string | undefined;
+						if (testFuncName) {
+							lastTestFuncName = testFuncName;
+							lensTestName = testFuncName;
+						} else if (subtestName && lastTestFuncName) {
+							lensTestName = `${lastTestFuncName}/${subtestName}`;
+						}
+
+						if (lensTestName) {
+							lenses.push(new vscode.CodeLens(range, {
+								title: profile.name,
+								command: 'test-options.recordTestTerminal',
+								arguments: [document.uri.fsPath, lensTestName, profile]
+							}));
+						}
 					}
 				}
 			}
