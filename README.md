@@ -1,5 +1,7 @@
 # Test Options
 
+Usable via the marketplace https://marketplace.visualstudio.com/items?itemName=addshore.test-options
+
 Test Options is a Visual Studio Code extension that enhances your testing workflow by allowing you to define multiple, highly-configurable test run profiles. It's designed to be language-agnostic, so you can tailor it to run tests with different arguments, environment variables, or even different test runners, all within the same project.
 
 Such as in go for copyist easy test recording.
