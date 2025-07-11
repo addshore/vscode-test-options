@@ -1,71 +1,104 @@
-# test-options README
+# Test Options
 
-This is the README for your extension "test-options". After writing up a brief description, we recommend including the following sections.
+Test Options is a Visual Studio Code extension that enhances your testing workflow by allowing you to define multiple, highly-configurable test run profiles. It's designed to be language-agnostic, so you can tailor it to run tests with different arguments, environment variables, or even different test runners, all within the same project.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- **Multiple Run Profiles**: Define several ways to run your tests (e.g., with coverage, with recording, in a specific environment).
+- **Language Agnostic**: Configure test commands for any language or framework, such as Go, Jest, Pytest, and more.
+- **Test Explorer Integration**: Your custom profiles appear directly in the Test Explorer UI.
+- **CodeLens Actions**: See and run your custom test profiles directly from your code, with links appearing above your test functions.
+- **Fully Configurable**: Control the executable, arguments, environment variables, and how tests are discovered.
 
-For example if there is an image subfolder under your extension project workspace:
+## Configuration
 
-\!\[feature X\]\(images/feature-x.png\)
+You can configure Test Options by adding `test-options.profiles` to your user or workspace `settings.json` file. This setting is an array of profile objects, where each object defines a unique way to run tests.
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+### Example: Go
 
-## Requirements
+Here’s how you can set up profiles for running standard Go tests, tests with coverage, and tests with a specific environment variable for `copyist`.
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+```json
+{
+    "test-options.profiles": [
+        {
+            "name": "Go: record test",
+            "commandExecutable": "go",
+            "commandArgsTemplate": [ "test", "-v", "-run", "^{{testName}}$" ],
+            "testFilePattern": "**/*_test.go",
+            "testFunctionRegex": "^func (Test\\w+)\\s*\\(",
+            "args": [ "-record" ]
+        },
+        {
+            "name": "Go: run with coverage",
+            "commandExecutable": "go",
+            "commandArgsTemplate": [ "test", "-v", "-run", "^{{testName}}$" ],
+            "testFilePattern": "**/*_test.go",
+            "testFunctionRegex": "^func (Test\\w+)\\s*\\(",
+            "args": [ "-cover" ]
+        },
+        {
+            "name": "Go: record test (env)",
+            "commandExecutable": "go",
+            "commandArgsTemplate": [ "test", "-v", "-run", "^{{testName}}$" ],
+            "testFilePattern": "**/*_test.go",
+            "testFunctionRegex": "^func (Test\\w+)\\s*\\(",
+            "args": [],
+            "env": { "COPYIST_RECORD": "1" }
+        }
+    ]
+}
+```
 
-## Extension Settings
+### Example: JavaScript (Jest)
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+You can just as easily configure it for a JavaScript project using Jest.
 
-For example:
+```json
+{
+    "test-options.profiles": [
+        {
+            "name": "Jest: run test",
+            "commandExecutable": "npx",
+            "commandArgsTemplate": [
+                "jest",
+                "{{testFile}}",
+                "--testNamePattern",
+                "^{{testName}}$"
+            ],
+            "testFilePattern": "**/*.{test,spec}.{js,ts}",
+            "testFunctionRegex": "^(?:it|test)\\(['\"]([^'\"]+)['\"]",
+            "args": []
+        },
+        {
+            "name": "Jest: run with coverage",
+            "commandExecutable": "npx",
+            "commandArgsTemplate": [
+                "jest",
+                "{{testFile}}",
+                "--testNamePattern",
+                "^{{testName}}$"
+            ],
+            "testFilePattern": "**/*.{test,spec}.{js,ts}",
+            "testFunctionRegex": "^(?:it|test)\\(['\"]([^'\"]+)['\"]",
+            "args": ["--coverage"]
+        }
+    ]
+}
+```
 
-This extension contributes the following settings:
+## Profile Properties
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+----
+Each object in the `test-options.profiles` array has the following properties:
+* `name` (string, required): The human-readable name for the profile, which appears in the UI.
+* `commandExecutable` (string, required): The command to run (e.g., `go`, `npx`, `python`).
+* `commandArgsTemplate` (array of strings, required): The base arguments for the command. You can use placeholders that will be replaced at runtime:
+    - `{{testName}}`: The name of the test function being run.
+    - `{{testFile}}`: The absolute path to the test file.
+    - `{{testProjectPath}}`: The absolute path to the directory containing the test file.
+* `testFilePattern` (string, required): A glob pattern used to identify which files are test files.
+* `testFunctionRegex` (string, required): A regular expression used to discover test functions within a file. **It must contain exactly one capturing group** for the test name.
+* `args` (array of strings, required): Additional arguments to append to the command for this specific profile.
+* `env` (object, optional): A key-value map of environment variables to set for the test run.
 
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
