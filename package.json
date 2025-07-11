@@ -17,10 +17,6 @@
   "contributes": {
     "commands": [
       {
-        "command": "test-options.helloWorld",
-        "title": "Hello World"
-      },
-      {
         "command": "test-options.recordTestTerminal",
         "title": "Record Test"
       }

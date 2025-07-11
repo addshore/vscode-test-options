@@ -13,12 +13,6 @@ export function activate(context: vscode.ExtensionContext) {
 	// Debug output: Extension activated
 	console.log('[test-options] Extension activated. Checking for vscode.tests:', !!vscode.tests);
 
-	// Register helloWorld command (existing)
-	const disposable = vscode.commands.registerCommand('test-options.helloWorld', () => {
-		vscode.window.showInformationMessage('Hello World from test-options 2!');
-	});
-	context.subscriptions.push(disposable);
-
 	// Register test controller and auto-discover Go tests
 	if (vscode.tests) {
 		console.log('[test-options] Registering test controller...');
